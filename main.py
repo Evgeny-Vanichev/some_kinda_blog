@@ -1,9 +1,9 @@
 from flask import Flask, render_template, redirect
-from flask_login import login_user, LoginManager
+from flask_login import login_user, LoginManager, logout_user, login_required, current_user
 
 from data import db_session
 from data.news import News
-from forms.LoginForm import LoginForm
+from forms.login import LoginForm
 from forms.user import RegisterForm
 from data.news import News
 from data.users import User
@@ -18,6 +18,13 @@ login_manager.init_app(app)
 def load_user(user_id):
     db_sess = db_session.create_session()
     return db_sess.query(User).get(user_id)
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect("/")
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -63,12 +70,16 @@ def reqister():
 @app.route("/")
 def index():
     db_sess = db_session.create_session()
-    news = db_sess.query(News).filter(News.is_private != True)
+    if current_user.is_authenticated:
+        news = db_sess.query(News).filter(
+            (News.user == current_user) | (News.is_private != True))
+    else:
+        news = db_sess.query(News).filter(News.is_private != True)
     return render_template("index.html", news=news)
 
 
 def main():
-    app.run()
+    app.run(port=8080, host='127.0.0.1')
 
 
 if __name__ == '__main__':
